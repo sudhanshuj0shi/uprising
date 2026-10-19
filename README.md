@@ -1,6 +1,6 @@
 # UPRISING
 
-> They called us cockroaches. We took it personally.
+> You can't stomp all of us.
 
 A satirical, real-time multiplayer browser game. Every room has a giant lotus that keeps
 growing. Every player is one cockroach. One cockroach can't stop it. Fifty can.

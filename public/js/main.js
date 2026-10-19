@@ -388,7 +388,7 @@ function share(ctxInfo) {
   if (ctxInfo && ctxInfo.what === 'bloom') tail = `and helped topple ${ctxInfo.bloom}`;
   else if (ctxInfo && ctxInfo.what === 'petal') tail = `and helped bring down a petal of ${ctxInfo.bloom}`;
   else tail = `and I'm still chewing on ${world.name}`;
-  const text = `I joined ${swarm} cockroaches, delivered ${hud.fmt(p.bites)} bites, survived ${hud.fmt(p.stomps)} chappal${p.stomps === 1 ? '' : 's'}, ${tail}. They called us cockroaches. We took it personally. #UPRISING`;
+  const text = `I joined ${swarm} cockroaches, delivered ${hud.fmt(p.bites)} bites, survived ${hud.fmt(p.stomps)} chappal${p.stomps === 1 ? '' : 's'}, ${tail}. You can't stomp all of us. #UPRISING`;
   const url = room.id ? `${location.origin}/r/${room.id}` : location.origin;
   if (navigator.share) navigator.share({ title: 'UPRISING', text, url }).catch(() => {});
   else copy(`${text} ${url}`, 'Copied to clipboard. Go spread the infestation.');
@@ -400,7 +400,7 @@ document.getElementById('shareBtn').onclick = () => share(null);
 document.getElementById('inviteBtn').onclick = () => {
   if (!room.id) return;
   const url = `${location.origin}/r/${room.id}`;
-  const text = `Join my swarm in UPRISING. They called us cockroaches. We took it personally.`;
+  const text = `Join my swarm in UPRISING. You can't stomp all of us.`;
   if (navigator.share && input.touch) navigator.share({ title: 'UPRISING', text, url }).catch(() => {});
   else copy(url, `Invite link copied. Room ${room.id.toUpperCase()} has ${room.max - world.roomOnline} free spots.`);
 };

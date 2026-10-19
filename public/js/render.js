@@ -644,19 +644,42 @@ export function drawShield(ctx, kind, i, growth, t, crowd) {
     label(ctx, z.x, z.y - 44, def.label, '#2b2b30', '#fff', 11);
   } else if (kind === 'sec144') {
     const over = crowd > R.SEC144_MAX;
-    // ring of police barricades (yellow-black striped boards on stands)
-    const rr = z.r + 8;
-    for (let k = 0; k < 8; k++) {
-      const a = k / 8 * Math.PI * 2 + 0.15, bx = z.x + Math.cos(a) * rr, by = z.y + Math.sin(a) * rr;
-      ctx.save(); ctx.translate(bx, by); ctx.rotate(a + Math.PI / 2);
-      ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.roundRect(-15, -5, 30, 10, 2); ctx.fill(); ctx.stroke();
-      ctx.save(); ctx.beginPath(); ctx.roundRect(-15, -5, 30, 10, 2); ctx.clip();
-      ctx.fillStyle = C.ink; for (let sx = -18; sx < 18; sx += 8) { ctx.beginPath(); ctx.moveTo(sx, 5); ctx.lineTo(sx + 4, -5); ctx.lineTo(sx + 8, -5); ctx.lineTo(sx + 4, 5); ctx.fill(); }
-      ctx.restore(); ctx.restore();
+    // Police tape along the petal's own border: yellow with black dashes. Outer petals are
+    // partly tucked under the inner ones, so tape only shows on their visible outer part.
+    const Rw0 = R.radius(growth);
+    ctx.save();
+    if (R.PARTS[i].kind === 'o') {
+      ctx.beginPath(); ctx.rect(R.LOTUS.x - 2000, R.LOTUS.y - 2000, 4000, 4000);
+      ctx.arc(R.LOTUS.x, R.LOTUS.y, Rw0 * 0.58, 0, Math.PI * 2, true); ctx.clip();
     }
-    ctx.save(); ctx.strokeStyle = over ? 'rgba(227,38,47,0.85)' : 'rgba(255,210,63,0.85)'; ctx.lineWidth = 3; ctx.setLineDash([6, 6]); ctx.lineDashOffset = -t * 20;
-    ctx.beginPath(); ctx.arc(z.x, z.y, rr, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
-    label(ctx, z.x, z.y - rr - 18, `${def.label} · ${crowd}/${R.SEC144_MAX} ${over ? 'DISPERSE!' : 'OK'}`, over ? '#e3262f' : '#ffd23f', over ? '#fff' : C.ink, 11);
+    partPath(ctx, i, growth);
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 9; ctx.stroke();
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 9; ctx.setLineDash([10, 10]); ctx.lineDashOffset = -t * 14; ctx.stroke();
+    if (over) { ctx.fillStyle = 'rgba(227,38,47,0.18)'; ctx.fill(); }
+    ctx.restore();
+    // Barricade stands placed ON that border, every so often.
+    const p = R.PARTS[i], Rw = R.radius(growth);
+    const posts = [];
+    if (p.kind === 'c') {
+      for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; posts.push([R.LOTUS.x + Math.cos(a) * Rw * p.zr * 0.95, R.LOTUS.y + Math.sin(a) * Rw * p.zr * 0.95, a + Math.PI / 2]); }
+    } else {
+      const L = Rw * p.len, W = Rw * p.wid, c = Math.cos(p.ang), sn = Math.sin(p.ang);
+      for (const side of [-1, 1]) for (const tt of (p.kind === 'o' ? [0.62, 0.8, 0.94] : [0.3, 0.55, 0.8])) {
+        const q = outlinePoint(L, W, tt, side), q2 = outlinePoint(L, W, tt + 0.02, side);
+        const x = R.LOTUS.x + q.x * c - q.y * sn, y = R.LOTUS.y + q.x * sn + q.y * c;
+        const x2 = R.LOTUS.x + q2.x * c - q2.y * sn, y2 = R.LOTUS.y + q2.x * sn + q2.y * c;
+        posts.push([x, y, Math.atan2(y2 - y, x2 - x)]);
+      }
+    }
+    for (const [bx, by, ang] of posts) {
+      ctx.save(); ctx.translate(bx, by); ctx.rotate(ang);
+      ctx.fillStyle = '#e8e2d2'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(-11, -4, 22, 8, 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#e3262f'; ctx.fillRect(-7, -4, 4, 8); ctx.fillRect(3, -4, 4, 8);
+      ctx.restore();
+    }
+    const tip = p.kind === 'c' ? { x: z.x, y: z.y - 30 } : { x: R.LOTUS.x + Math.cos(p.ang) * Rw * p.len * 0.62, y: R.LOTUS.y + Math.sin(p.ang) * Rw * p.len * 0.62 };
+    label(ctx, tip.x, tip.y, `${def.label} · ${crowd}/${R.SEC144_MAX} ${over ? 'DISPERSE!' : 'OK'}`, over ? '#e3262f' : '#ffd23f', over ? '#fff' : C.ink, 11);
   }
 }
