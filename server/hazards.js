@@ -139,8 +139,13 @@ class Hazards {
     if (now < this.nextShield) return;
     const alive = lotus.parts.map((p, i) => i).filter(i => lotus.parts[i].alive && i !== R.CORE);
     const picks = alive.sort(() => Math.random() - 0.5).slice(0, 3);
-    for (const i of picks) lotus.parts[i].shieldUntil = now + 8000;
-    if (picks.length) this.room.broadcast({ t: 'ev', k: 'shield', parts: picks, until: now + 8000 });
+    // Rotate through the shield kinds so consecutive shields always differ.
+    this.shieldIdx = ((this.shieldIdx ?? Math.random() * C.SHIELD_KINDS.length | 0) + 1) % C.SHIELD_KINDS.length;
+    const kind = C.SHIELD_KINDS[this.shieldIdx];
+    lotus.shieldKind = kind;
+    const ms = kind === 'sec144' ? 12000 : 8000;      // Section 144 lasts longer: it's a puzzle, not a wall
+    for (const i of picks) lotus.parts[i].shieldUntil = now + ms;
+    if (picks.length) { this.room.broadcast({ t: 'ev', k: 'shield', parts: picks, until: now + ms, kind }); this.room.news(kind, {}); }
     this.nextShield = now + rand(32000, 50000);
   }
 

@@ -116,7 +116,7 @@ class Room {
     return { gen: L.gen, name: R.bloomName(L.gen), rebranded: L.rebranded, fallenUntil: L.fallenUntil, bornAt: L.bornAt, now,
       totals: { damage: Math.round(L.totals.damage), petalsDown: L.totals.petalsDown, bloomsFallen: L.totals.bloomsFallen },
       history: L.history.slice(-8).map(h => ({ name: h.name, lived: h.lived })),
-      rally: L.rally && { part: L.rally.part, until: L.rally.until, name: L.rally.name } };
+      rally: L.rally && { part: L.rally.part, until: L.rally.until, name: L.rally.name }, shieldKind: L.shieldKind };
   }
 
   top(n = 5) {
@@ -162,9 +162,17 @@ class Room {
       if (o !== s && !o.sleeping && o.stunUntil <= now && Math.hypot(o.x - s.x, o.y - s.y) < R.BITE.swarmRadius) buddies++;
     }
     const mult = R.swarmMult(buddies) * (R.has(lvl, 'mandibles') ? 1.15 : 1);
-    const r = lotus.bite(part, R.BITE.dmg * mult, s.token, now);
+    // Shields: Section 144 lets small groups through at full strength and blocks crowds.
+    const shielded = lotus.parts[part].shieldUntil > now, kind = shielded ? lotus.shieldKind : null;
+    let opts = {}, blocked = shielded;
+    if (kind === 'sec144') {
+      const crowd = R.crowdOnPart([...this.sessions.values()].filter(o => !o.sleeping && o.stunUntil <= now), part, lotus.growth);
+      blocked = crowd > R.SEC144_MAX;
+      opts = { shieldMult: blocked ? 0 : 1 };
+    }
+    const r = lotus.bite(part, R.BITE.dmg * mult, s.token, now, opts);
     if (!r) return;
-    this.sendTo(s, { t: 'hit', part, dmg: Math.round(r.dealt * 10) / 10, buddies, shield: lotus.parts[part].shieldUntil > now, killed: r.killed });
+    this.sendTo(s, { t: 'hit', part, dmg: Math.round(r.dealt * 10) / 10, buddies, shield: blocked, kind, killed: r.killed });
     this.prog.onBite(s.token, r.dealt, buddies);
     const p = this.prog.get(s.token);
     const e = this.lb.get(s.token) || { name: p.name, hue: p.hue, dmg: 0, lvl, gen: lotus.gen };
@@ -187,6 +195,8 @@ class Room {
     const lotus = this.lotus;
     const part = R.biteTarget(s.x, s.y, lotus.growth, i => lotus.isAlive(i), true, lotus.coreOpen(), 280);
     if (part < 0) return this.sendTo(s, { t: 'ev', k: 'toast', text: 'Get closer to a petal to call a rally.' });
+    if (lotus.parts[part].shieldUntil > now && lotus.shieldKind === 'shutdown')
+      return this.sendTo(s, { t: 'ev', k: 'toast', text: 'No network on this petal. Your rally could not be sent.' });
     s.lastRally = now;
     const name = this.prog.get(s.token).name;
     lotus.rally = { part, until: now + 25000, by: s.token, name, fake: false };

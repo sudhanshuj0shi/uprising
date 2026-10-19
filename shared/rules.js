@@ -57,6 +57,14 @@
     swarmRadius: 150, swarmPer: 0.2, swarmMaxBuddies: 8, // up to x2.6
     rallyMult: 1.25, shieldMult: 0.15,
   };
+  // Section 144 shield: a petal under it can only be bitten by groups of up to this many.
+  const SEC144_MAX = 3;
+  /** How many of `points` ({x, y}) are crowding a part right now (near its bite zone). */
+  function crowdOnPart(points, part, growth) {
+    const z = zone(part, growth); let n = 0;
+    for (const q of points) if (Math.hypot(q.x - z.x, q.y - z.y) < z.r + 30) n++;
+    return n;
+  }
   const swarmMult = (buddies) => 1 + BITE.swarmPer * Math.min(buddies, BITE.swarmMaxBuddies);
 
   // ---- Movement ------------------------------------------------------------
@@ -120,6 +128,6 @@
   ];
 
   return { WORLD, LOTUS, PARTS, CORE, CORE_UNLOCK, OUTER, INNER, genMult, crowdMult, maxHp, radius, zone, biteTarget,
-    BITE, swarmMult, MOVE, LEVELS, levelFor, nextLevelXp, UNLOCKS, has, TITLES, titleFor, sizeFor, ACHIEVEMENTS,
+    BITE, swarmMult, SEC144_MAX, crowdOnPart, MOVE, LEVELS, levelFor, nextLevelXp, UNLOCKS, has, TITLES, titleFor, sizeFor, ACHIEVEMENTS,
     randomName, bloomName, HEADLINES };
 });

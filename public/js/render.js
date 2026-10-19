@@ -55,7 +55,53 @@ export class LotusArt {
     this.S = Math.ceil(this.R0 * 2.3);
     this.canvas = document.createElement('canvas'); this.canvas.width = this.canvas.height = this.S;
     this.parts = R.PARTS.map(() => ({ canvas: document.createElement('canvas'), key: '' }));
+    this.holes = R.PARTS.map(() => []);   // per-bite holes, in each part canvas's own pixels
     this.dirty = true; this.palette = 'normal';
+  }
+
+  // ---------------------------------------------------------------- per-bite holes
+  // Every bite punches a small ragged hole INTO the petal (not a sticker on top):
+  // repeated bites in one spot merge into an eaten-through patch, like a leaf chewed
+  // by insects. Holes are stored in the part's own canvas coordinates so they survive
+  // re-renders and scale with the lotus as it grows.
+
+  /** World position → that part's canvas pixel position. */
+  toPart(i, wx, wy, growth) {
+    const p = R.PARTS[i], cv = this.parts[i].canvas, sc = LC / growth;
+    const dx = (wx - R.LOTUS.x) * sc, dy = (wy - R.LOTUS.y) * sc;
+    if (p.kind === 'c') return { x: cv.width / 2 + dx, y: cv.height / 2 + dy };
+    const c = Math.cos(-p.ang), sn = Math.sin(-p.ang);
+    return { x: 8 + dx * c - dy * sn, y: cv.height / 2 + dx * sn + dy * c };   // 8 = the part canvas padding
+  }
+
+  addHole(i, wx, wy, growth) {
+    const q = this.toPart(i, wx, wy, growth), sc = LC / growth;
+    const h = { x: q.x, y: q.y, r: (2.6 + Math.random() * 1.6) * sc, rot: Math.random() * 6.28 };
+    const list = this.holes[i];
+    list.push(h);
+    if (list.length > 180) { list.shift(); this.parts[i].key = ''; }   // re-render without the oldest
+    else if (this.parts[i].key && !this.parts[i].key.startsWith('-1')) { this.carve(this.parts[i].canvas.getContext('2d'), h); this.dirty = true; }
+  }
+
+  /** Heal the oldest `n` holes (the petal regenerated). */
+  healHoles(i, n) { if (n > 0 && this.holes[i].length) { this.holes[i].splice(0, n); this.parts[i].key = ''; } }
+  clearHoles(i) { if (this.holes[i].length) { this.holes[i].length = 0; this.parts[i].key = ''; } }
+  holeCount(i) { return this.holes[i].length; }
+
+  /** Three overlapping bites with a bruised rim, cut out of the part canvas. */
+  carve(ctx, h) {
+    const pal = PALETTES[this.palette];
+    const cs = [[0, 0, 1], [h.r * 0.7, h.r * 0.25, 0.7], [-h.r * 0.45, -h.r * 0.55, 0.62]].map(([dx, dy, k]) => {
+      const c = Math.cos(h.rot), sn = Math.sin(h.rot);
+      return [h.x + dx * c - dy * sn, h.y + dx * sn + dy * c, h.r * k];
+    });
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.strokeStyle = pal.rim; ctx.lineWidth = Math.max(2, h.r * 0.45);
+    for (const [x, y, r] of cs) { ctx.beginPath(); ctx.arc(x, y, r + ctx.lineWidth * 0.45, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.globalCompositeOperation = 'destination-out';
+    for (const [x, y, r] of cs) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
   }
 
   // frac: damage fraction per part, alive flags. Only re-renders parts whose bucket changed.
@@ -86,6 +132,7 @@ export class LotusArt {
       const holes = [[0, 0], ...Array.from({ length: 6 }, (_, k) => [Math.cos(k / 6 * Math.PI * 2) * r * 0.5, Math.sin(k / 6 * Math.PI * 2) * r * 0.5])];
       for (const [hx, hy] of holes) { ctx.beginPath(); ctx.arc(hx, hy, r * 0.11, 0, Math.PI * 2); ctx.fill(); }
       this.chew(ctx, i, bucket, (m) => ({ x: Math.cos(m.a) * r * 0.88 * m.d, y: Math.sin(m.a) * r * 0.88 * m.d, rr: r * m.r }), pal);
+      for (const h of this.holes[i]) this.carve(ctx, h);
       return;
     }
     const L = this.R0 * p.len, W = this.R0 * p.wid;
@@ -106,6 +153,7 @@ export class LotusArt {
     ctx.strokeStyle = pal.vein; ctx.lineWidth = 2;
     for (const v of [-0.35, 0, 0.35]) { ctx.beginPath(); ctx.moveTo(L * 0.08, 0); ctx.quadraticCurveTo(L * 0.5, W * v * 1.1, L * 0.9, W * v * 0.25); ctx.stroke(); }
     this.chew(ctx, i, bucket, (m) => { const q = outlinePoint(L, W, m.t, m.side); return { x: q.x - m.inset * W * 0.3, y: q.y * (1 - m.inset), rr: W * m.r }; }, pal);
+    for (const h of this.holes[i]) this.carve(ctx, h);
   }
 
   chew(ctx, i, bucket, place, pal) {
@@ -554,4 +602,61 @@ export function drawDetentionPod(ctx, pod, n, t, self) {
   ctx.beginPath(); ctx.ellipse(0, -12, r, r * 0.72, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
   ctx.restore();
   label(ctx, x, y + r * 0.72 + 26, `${window.CONTENT.DETENTION.sign} · ${n.toLocaleString('en-IN')} held`, '#2f5aa8', '#fff', 13);
+}
+
+// ---------------------------------------------------------------- Lotus shields
+// Drawn over a protected petal. `kind` is one of shared/content.js SHIELDS.
+//   sealed   — a brown government envelope with string and a red wax seal
+//   shutdown — the petal greys out under a "no signal" icon with a buffering spinner
+//   sec144   — police barricades around the petal and a live headcount sign
+export function drawShield(ctx, kind, i, growth, t, crowd) {
+  const z = R.zone(i, growth), def = window.CONTENT.SHIELDS[kind] || window.CONTENT.SHIELDS.sealed;
+  if (kind === 'sealed') {
+    ctx.save(); partPath(ctx, i, growth); ctx.clip();
+    ctx.fillStyle = 'rgba(196,150,92,0.92)'; ctx.fillRect(z.x - 400, z.y - 400, 800, 800);
+    ctx.strokeStyle = 'rgba(120,80,40,0.55)'; ctx.lineWidth = 2;               // envelope flap folds
+    ctx.beginPath(); ctx.moveTo(z.x - 300, z.y - 200); ctx.lineTo(z.x, z.y); ctx.lineTo(z.x + 300, z.y - 200); ctx.stroke();
+    ctx.strokeStyle = '#f2e8d2'; ctx.lineWidth = 4;                             // tied with string
+    ctx.beginPath(); ctx.moveTo(z.x - 400, z.y + 20); ctx.lineTo(z.x + 400, z.y - 20); ctx.stroke();
+    ctx.restore();
+    ctx.save(); partPath(ctx, i, growth); ctx.strokeStyle = '#7a4f22'; ctx.lineWidth = 5; ctx.stroke(); ctx.restore();
+    // wax seal
+    ctx.save(); ctx.translate(z.x, z.y); ctx.rotate(-0.2);
+    ctx.fillStyle = '#b3122e'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, r = k % 2 ? 19 : 23; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffd7d7'; ctx.font = '800 9px "Bricolage Grotesque", system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('SEALED', 0, 0);
+    ctx.restore();
+    label(ctx, z.x, z.y - 40, def.label, '#f2e8d2', C.ink, 11);
+  } else if (kind === 'shutdown') {
+    ctx.save(); partPath(ctx, i, growth);
+    ctx.fillStyle = 'rgba(70,70,78,0.62)'; ctx.fill(); ctx.strokeStyle = '#2b2b30'; ctx.lineWidth = 5; ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.translate(z.x, z.y - 6); ctx.lineCap = 'round';
+    for (const r of [8, 16, 24]) { ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 10, r, -Math.PI * 0.78, -Math.PI * 0.22); ctx.stroke(); }
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 10, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#e3262f'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(-20, -14); ctx.lineTo(20, 18); ctx.stroke();
+    // buffering spinner
+    ctx.translate(0, 34); ctx.rotate(t * 5);
+    for (let k = 0; k < 8; k++) { ctx.fillStyle = `rgba(255,255,255,${(k + 1) / 9})`; ctx.beginPath(); ctx.arc(Math.cos(k / 8 * Math.PI * 2) * 8, Math.sin(k / 8 * Math.PI * 2) * 8, 2.2, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+    label(ctx, z.x, z.y - 44, def.label, '#2b2b30', '#fff', 11);
+  } else if (kind === 'sec144') {
+    const over = crowd > R.SEC144_MAX;
+    // ring of police barricades (yellow-black striped boards on stands)
+    const rr = z.r + 8;
+    for (let k = 0; k < 8; k++) {
+      const a = k / 8 * Math.PI * 2 + 0.15, bx = z.x + Math.cos(a) * rr, by = z.y + Math.sin(a) * rr;
+      ctx.save(); ctx.translate(bx, by); ctx.rotate(a + Math.PI / 2);
+      ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = C.ink; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(-15, -5, 30, 10, 2); ctx.fill(); ctx.stroke();
+      ctx.save(); ctx.beginPath(); ctx.roundRect(-15, -5, 30, 10, 2); ctx.clip();
+      ctx.fillStyle = C.ink; for (let sx = -18; sx < 18; sx += 8) { ctx.beginPath(); ctx.moveTo(sx, 5); ctx.lineTo(sx + 4, -5); ctx.lineTo(sx + 8, -5); ctx.lineTo(sx + 4, 5); ctx.fill(); }
+      ctx.restore(); ctx.restore();
+    }
+    ctx.save(); ctx.strokeStyle = over ? 'rgba(227,38,47,0.85)' : 'rgba(255,210,63,0.85)'; ctx.lineWidth = 3; ctx.setLineDash([6, 6]); ctx.lineDashOffset = -t * 20;
+    ctx.beginPath(); ctx.arc(z.x, z.y, rr, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    label(ctx, z.x, z.y - rr - 18, `${def.label} · ${crowd}/${R.SEC144_MAX} ${over ? 'DISPERSE!' : 'OK'}`, over ? '#e3262f' : '#ffd23f', over ? '#fff' : C.ink, 11);
+  }
 }

@@ -90,6 +90,18 @@
       'New power-up announced! Cockroaches advised not to read the fine print',
       'Development is coming. Please wait at the platform. Forever',
     ],
+    sealed: [
+      'Petal placed in sealed cover; contents to be revealed after the next five elections',
+      'Court asks to see petal. Petal submitted in sealed cover. Court satisfied',
+    ],
+    shutdown: [
+      'Internet suspended on petals "to maintain law and order"; lotus posts 40 selfies',
+      'Petal network shut down for your safety. Lotus Wi-Fi unaffected',
+    ],
+    sec144: [
+      'Section 144 imposed on petals. Groups of 4 cockroaches declared "a mob"',
+      'Cockroaches told to protest in groups of three, at the designated protest site, 40 km away',
+    ],
     newGen: [
       'Introducing {bloom}: bigger, shinier, 0% different',
       'New lotus inaugurated with ribbon cutting, drone show and zero petals ready',
@@ -119,6 +131,22 @@
   };
   const JUMLA_KINDS = Object.keys(JUMLAS);
 
+  // ---------------------------------------------------------------- Lotus shields
+  // Every so often the lotus protects a few petals. Each event picks one of these.
+  //   sealed   — bites barely scratch it (×0.15).
+  //   shutdown — same, AND rallies can't target it ("no network").
+  //   sec144   — small groups (≤ SEC144_MAX) bite at FULL damage; a bigger crowd is
+  //              "dispersed" and does nothing. The swarm has to split up.
+  const SHIELDS = {
+    sealed:   { label: 'SEALED COVER', sub: 'Contents classified', hit: 'SEALED',
+      toast: '📁 SEALED COVER: some petals are now classified. Hearing adjourned.' },
+    shutdown: { label: 'INTERNET SHUTDOWN', sub: 'No signal', hit: 'BUFFERING…',
+      toast: '📵 INTERNET SHUTDOWN on some petals. Bites are buffering and rallies won\'t reach.' },
+    sec144:   { label: 'SECTION 144', sub: 'No gathering of 4+', hit: 'DISPERSE!',
+      toast: '🚧 SECTION 144 on some petals: no gathering of 4 or more. Small groups bite at full strength!' },
+  };
+  const SHIELD_KINDS = Object.keys(SHIELDS);
+
   // The waiting room is a detention pod on the pond: when the server is at capacity,
   // extra cockroaches are "preventively detained" before they reach the protest site.
   const DETENTION = {
@@ -136,5 +164,5 @@
   // Where the pod sits in the world (bottom-left shore of the pond).
   const POD = { x: 520, y: 2720, r: 150 };
 
-  return { CHANNEL, HEADLINES, REACTIVE, JUMLAS, JUMLA_KINDS, DETENTION, POD };
+  return { CHANNEL, HEADLINES, REACTIVE, JUMLAS, JUMLA_KINDS, SHIELDS, SHIELD_KINDS, DETENTION, POD };
 });

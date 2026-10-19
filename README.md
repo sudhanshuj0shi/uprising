@@ -32,7 +32,7 @@ Open a few tabs to see the swarm. Phones on the same Wi-Fi can join at `http://<
   The **ROOM** badge copies an invite link (`/r/<roomId>`) so friends land in your room.
 - **National scoreboard.** Every lotus toppled in any room counts toward "lotuses toppled across India".
 - **Swarm bonus.** Each cockroach near you adds +20% to your bites (up to ×2.6).
-- **The lotus fights back:** the Chappal stomps crowds; petals go "UNDER REVIEW" (shield);
+- **The lotus fights back:** the Chappal stomps crowds; shields rotate between Sealed Cover, Internet Shutdown (no rallies) and Section 144 (only groups of 3 or fewer can bite);
   the Godi Media Megaphone runs Breaking News with a decoy rally point; the Great Rebrand heals it once.
 - **Jumla power-ups** look like rewards and backfire: Free Power-Up (launches you), Bullet Train
   (eternal delays), Free Wi-Fi (OTP loop), Note Exchange (your next 10 bites are void), Smart City

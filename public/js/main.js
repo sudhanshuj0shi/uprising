@@ -12,7 +12,7 @@ import { hud } from './hud.js';
 import { sfx } from './sfx.js';
 import { openShare } from './news.js';
 import { Nibbles } from './nibbles.js';
-import { C, LotusArt, Pond, Particles, drawRoach, drawChappal, drawChappalWarning, drawJumla, drawCutout, drawBubble,
+import { C, LotusArt, Pond, Particles, drawShield, drawRoach, drawChappal, drawChappalWarning, drawJumla, drawCutout, drawBubble,
   drawDetentionPod, drawPin, label, partPath, fmtDur } from './render.js';
 const R = window.RULES, P = window.PROTO, CONTENT = window.CONTENT;
 const VERSION = document.querySelector('meta[name="uprising-version"]')?.content;
@@ -24,7 +24,7 @@ const input = new Input(canvas);
 const lotusArt = new LotusArt();
 const pond = new Pond();
 const fx = new Particles();
-const nibbles = new Nibbles();            // a tooth mark for every bite (see nibbles.js)
+const nibbles = new Nibbles(lotusArt);    // every bite eats a small hole in the petal (see nibbles.js)
 hud.init(input);
 
 let clockOffset = 0;                       // serverTime - Date.now()
@@ -34,7 +34,7 @@ const syncClock = (now) => { if (now) clockOffset = clockOffset ? clockOffset * 
 // The lotus as the server last described it. `frac` = damage 0..1 per part.
 const world = {
   gen: 1, name: R.bloomName(1), growth: 1, frac: R.PARTS.map(() => 0), alive: R.PARTS.map(() => true), shield: R.PARTS.map(() => false),
-  rally: null, rebranded: false, fallenUntil: 0, totals: { damage: 0 }, history: [], lb: [],
+  rally: null, shieldKind: 'sealed', rebranded: false, fallenUntil: 0, totals: { damage: 0 }, history: [], lb: [],
   roomOnline: 0, nationOnline: 0, national: null, detained: 0,
 };
 const hz = { chappals: new Map(), stomps: [], jumlas: new Map(), cutouts: [], decoy: null, bubbles: new Map() };
@@ -74,6 +74,7 @@ function applyFull(w) {
   syncClock(w.now);
   world.gen = w.gen; world.name = w.name; world.rebranded = w.rebranded; world.fallenUntil = w.fallenUntil;
   world.totals = Object.assign(world.totals, w.totals); world.history = w.history || []; world.rally = w.rally; world.bornAt = w.bornAt;
+  if (w.shieldKind) world.shieldKind = w.shieldKind;
 }
 function applyNational(n) {
   if (!n) return;
@@ -222,7 +223,8 @@ function onHit(m) {
     me.voidLeft = m.left; return;
   }
   if (m.shield) {
-    fx.text(mx, my - 18, 'BLOCKED', C.sky, 13); sfx.shielded();
+    const def = CONTENT.SHIELDS[m.kind] || {};
+    fx.text(mx, my - 18, m.kind === 'sec144' ? 'DISPERSE! 4+ HERE' : (def.hit || 'BLOCKED'), m.kind === 'sec144' ? C.danger : C.sky, 13); sfx.shielded();
     for (let k = 0; k < 6; k++) fx.add({ type: 'spark', x: mx, y: my, vx: (Math.random() - 0.5) * 260, vy: (Math.random() - 0.5) * 260, life: 0.35, age: 0, r: 3 });
   } else {
     nibbles.add(m.part, mx, my, me.a, world.growth, performance.now());
@@ -286,10 +288,13 @@ function onEvent(m) {
       break;
     }
     case 'rallyEnd': world.rally = null; break;
-    case 'shield':
+    case 'shield': {
       for (const i of m.parts) world.shield[i] = true;
-      hud.toast('🛡 LOTUS SHIELD: some petals are <b>under review</b>. Bite elsewhere.', '', 3);
+      world.shieldKind = m.kind || 'sealed';
+      const def = CONTENT.SHIELDS[world.shieldKind];
+      if (def) hud.toast(hud.esc(def.toast), '', 4);
       break;
+    }
     case 'chappal':
       hz.chappals.set(m.id, { ...m, at: now + m.in, total: m.in });
       if (me && nearMe(m.x, m.y, m.r + 60)) sfx.warn();
@@ -358,6 +363,18 @@ function onJumlaHit(m) {
     case 'teleport': me.x = m.x; me.y = m.y; me.vx = me.vy = 0; cam.x = me.x; cam.y = me.y; fx.sparkle(me.x, me.y, 20); break;
   }
   fx.text(me.x, me.y - 44, '*Terms & conditions apply', C.zap, 16);
+}
+
+/** How many cockroaches (including you) are crowding a petal: Section 144 cares. */
+function crowdOn(part) {
+  const pts = [...others.values()].filter(o => !o.sleeping && !o.stunned);
+  if (me && joined && !me.stunned) pts.push(me);
+  return R.crowdOnPart(pts, part, world.growth);
+}
+/** Would a bite on this petal be blocked right now? (Section 144 only blocks crowds.) */
+function blockedFor(part) {
+  if (!world.shield[part]) return false;
+  return world.shieldKind !== 'sec144' || crowdOn(part) > R.SEC144_MAX;
 }
 
 function nearMe(x, y, d) { return me && Math.hypot(me.x - x, me.y - y) < d; }
@@ -529,6 +546,10 @@ function onboarding(targ, flying) {
     return hud.hint('Crawl onto a pink petal');
   }
   // situational tips
+  if (targ >= 0 && world.shield[targ] && world.shieldKind === 'sec144' && crowdOn(targ) > R.SEC144_MAX)
+    return hud.hint('Section 144: too many of you on this petal. Split into groups of 3!');
+  if (targ >= 0 && world.shield[targ] && world.shieldKind !== 'sec144')
+    return hud.hint(world.shieldKind === 'shutdown' ? 'This petal is offline. Bite another one.' : 'This petal is in a sealed cover. Bite another one.');
   if (input.biting && targ < 0 && me.misses > 4) {
     const inner = R.biteTarget(me.x, me.y, world.growth, i => world.alive[i], true, true, 10);
     if (inner === R.CORE && !coreOpen()) return hud.hint(`The core has Z+ security · bring down ${R.CORE_UNLOCK - downCount()} more petal${R.CORE_UNLOCK - downCount() === 1 ? '' : 's'}`);
@@ -553,7 +574,7 @@ function updateOthers(dt) {
       if (was < 0.05 && o.biteT >= 0.05) {
         const mx = o.x + Math.cos(o.a) * 18 * o.size, my = o.y + Math.sin(o.a) * 18 * o.size;
         const part = R.biteTarget(mx, my, world.growth, i => world.alive[i], o.flying, coreOpen(), R.BITE.reach * o.size + 8);
-        if (part >= 0 && !world.shield[part]) nibbles.add(part, mx, my, o.a, world.growth, performance.now());
+        if (part >= 0 && !blockedFor(part)) nibbles.add(part, mx, my, o.a, world.growth, performance.now());
         if (inView(o.x, o.y)) fx.crumbs(mx, my, 4, ['#ff4f8b', '#ffc2d6', '#fff']);
       }
       if (o.biteT > 1) o.biteT = 0;
@@ -611,7 +632,6 @@ function frame(nowP) {
   if (fallen) drawRoots(t, world.fallenUntil - now);
   else {
     lotusArt.draw(ctx, world.growth, t);
-    nibbles.draw(ctx, partPath, world.growth, nowP, world.rebranded);
     nibbles.drawFlash(ctx, partPath, world.growth, nowP);
   }
   drawLotusOverlays(now);
@@ -665,17 +685,10 @@ function frame(nowP) {
 function drawLotusOverlays(now) {
   if (world.fallenUntil > now) return;
   const g = world.growth;
-  // shields: glassy "under review" coating
+  // shields: Sealed Cover / Internet Shutdown / Section 144 (see render.js drawShield)
   for (let i = 0; i < R.PARTS.length; i++) {
     if (!world.shield[i] || !world.alive[i]) continue;
-    ctx.save(); partPath(ctx, i, g);
-    ctx.fillStyle = `rgba(170,230,255,${0.35 + Math.sin(t * 6) * 0.1})`; ctx.fill();
-    ctx.strokeStyle = '#6fd0ff'; ctx.lineWidth = 5; ctx.stroke(); ctx.restore();
-    const z = R.zone(i, g);
-    ctx.save(); ctx.translate(z.x, z.y); ctx.rotate(-0.25);
-    ctx.font = '800 13px "Bricolage Grotesque", system-ui'; ctx.textAlign = 'center';
-    ctx.strokeStyle = '#1f7fb0'; ctx.lineWidth = 2.5; const w = ctx.measureText('UNDER REVIEW').width + 12;
-    ctx.strokeRect(-w / 2, -11, w, 22); ctx.fillStyle = '#1f7fb0'; ctx.fillText('UNDER REVIEW', 0, 5); ctx.restore();
+    drawShield(ctx, world.shieldKind, i, g, t, crowdOn(i));
   }
   // the petal you're about to bite glows
   if (me && joined && profile) {

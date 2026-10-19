@@ -25,6 +25,7 @@ class Lotus {
     this.totals = Object.assign({ damage: 0, bites: 0, petalsDown: 0, bloomsFallen: 0 }, s.totals);
     this.history = s.history || [];
     this.rally = null;      // {part, until, by, name, fake}
+    this.shieldKind = 'sealed';   // which shield the current shield event uses (see shared/content.js)
   }
 
   serialize() {
@@ -105,12 +106,13 @@ class Lotus {
   }
 
   // Returns {dealt, killed} or null if the bite was not allowed.
-  bite(i, amount, playerId, now) {
+  /** opts.shieldMult overrides the shield's damage multiplier (Section 144 decides per bite). */
+  bite(i, amount, playerId, now, opts = {}) {
     if (this.isFallen(now)) return null;
     const p = this.parts[i];
     if (!p || !p.alive) return null;
     if (i === R.CORE && !this.coreOpen()) return null;
-    if (p.shieldUntil > now) amount *= R.BITE.shieldMult;
+    if (p.shieldUntil > now) amount *= opts.shieldMult ?? R.BITE.shieldMult;
     if (this.rally && this.rally.part === i && !this.rally.fake) amount *= R.BITE.rallyMult;
     const m = this.max(i);
     const dealt = Math.min(amount, m - p.dmg);
