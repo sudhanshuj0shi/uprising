@@ -1,6 +1,6 @@
 # UPRISING
 
-> You can't stomp all of us.
+> Chew the system.
 
 A satirical, real-time multiplayer browser game. Every room has a giant lotus that keeps
 growing. Every player is one cockroach. One cockroach can't stop it. Fifty can.

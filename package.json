@@ -1,7 +1,7 @@
 {
   "name": "uprising",
   "version": "1.0.0",
-  "description": "A satirical multiplayer browser game. You can't stomp all of us.",
+  "description": "A satirical multiplayer browser game. Chew the system.",
   "main": "server/index.js",
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning server/index.js",
