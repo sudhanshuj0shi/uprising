@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>UPRISING — They called us cockroaches.</title>
+<meta name="description" content="A satirical multiplayer game. A giant lotus keeps growing. A swarm of cockroaches keeps eating it.">
+<meta property="og:title" content="UPRISING">
+<meta property="og:description" content="They called us cockroaches. We took it personally.">
+<meta name="theme-color" content="#3d8f88">
+<meta name="uprising-version" content="__V__">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css?v=__V__">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<!-- ============ title screen (the live world keeps running behind it) ============ -->
+<div id="intro">
+  <div class="card intro-card">
+    <h1 class="logo" aria-label="UPRISING">
+      <span>UPRIS</span><svg class="logo-roach" viewBox="0 0 64 40" aria-hidden="true"><use href="#roach"/></svg><span>NG</span>
+    </h1>
+    <p class="tagline">They called us cockroaches.<br><em>We took it personally.</em></p>
+    <p class="pitch">A giant lotus keeps growing. One cockroach can't stop it. <b>All of us can.</b></p>
+    <form id="joinForm" autocomplete="off">
+      <label class="name-row">
+        <span class="name-label">Your cockroach</span>
+        <input id="nameInput" maxlength="24" spellcheck="false" aria-label="Cockroach name">
+        <button type="button" id="reroll" class="icon-btn" title="Random name" aria-label="Random name">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.6"/><circle cx="15.5" cy="15.5" r="1.6"/><circle cx="15.5" cy="8.5" r="1.6"/><circle cx="8.5" cy="15.5" r="1.6"/></svg>
+        </button>
+      </label>
+      <button id="joinBtn" class="big-btn" type="submit" disabled>Connecting…</button>
+    </form>
+    <p class="live" id="liveLine">&nbsp;</p>
+    <p class="invite-line" id="inviteLine" hidden></p>
+    <div class="controls-hint">
+      <span><kbd>Mouse</kbd>/<kbd>WASD</kbd> move</span>
+      <span><kbd>Click</kbd>/<kbd>Space</kbd> bite</span>
+      <span><kbd>Shift</kbd> dash</span>
+    </div>
+  </div>
+  <p class="footnote">A work of satire. No real cockroaches were harmed. Several lotuses were.</p>
+</div>
+
+<!-- ============ detention pod (only when the server is at capacity) ============ -->
+<div id="queue" class="detained card" hidden>
+  <span class="chip chip-police">PREVENTIVE DETENTION</span>
+  <h2>You are <span id="queuePos">#1</span> in line for release</h2>
+  <p id="queueLine">Detained before reaching the protest site. For your own safety.</p>
+  <p class="muted">The uprising is at capacity. You'll be released into the pond automatically.</p>
+</div>
+
+<!-- ============ in-game HUD ============ -->
+<div id="hud" hidden>
+  <header class="bloom card">
+    <div class="bloom-top"><span id="bloomGen" class="chip">BLOOM #1</span><b id="bloomName">The Great Bloom</b></div>
+    <div class="petals" id="petals" aria-label="Lotus petals"></div>
+    <div class="hp"><div class="hp-fill" id="hpFill"></div><span id="hpPct">100%</span></div>
+    <div class="stats"><span class="pulse"></span><b id="online">1</b>/<span id="roomMax">50</span>&nbsp;in this room · <b id="nationOnline">1</b>&nbsp;across India</div>
+  </header>
+
+  <div id="ticker" hidden><span class="tag">BREAKING</span><div class="track"><span id="tickerText"></span></div><button id="tickerShare" class="ticker-share" aria-label="Share this headline">Share</button></div>
+
+  <aside id="board" class="card">
+    <button id="boardToggle" class="board-head">Worst pests <span class="caret">▾</span></button>
+    <ol id="lb"></ol>
+    <p class="nation" id="nationLine"></p>
+  </aside>
+
+  <section id="me" class="card">
+    <div class="lvl" id="lvl">1</div>
+    <div class="me-body">
+      <div class="me-name" id="meName">—</div>
+      <div class="me-title" id="meTitle">Nymph</div>
+      <div class="xp"><div class="xp-fill" id="xpFill"></div></div>
+    </div>
+  </section>
+
+  <div id="swarm" hidden><b id="swarmMult">×1.0</b><span>swarm bonus</span></div>
+
+  <section id="abilities">
+    <button class="ab" data-ab="rally" id="abRally"><span class="ab-icon">⚑</span><span class="ab-key">R</span><span class="ab-lock">LV2</span><i class="cd"></i></button>
+    <button class="ab" data-ab="fly" id="abFly"><span class="ab-icon">≋</span><span class="ab-key">F</span><span class="ab-lock">LV3</span><i class="cd"></i></button>
+    <button class="ab" data-ab="dash" id="abDash"><span class="ab-icon">»</span><span class="ab-key">⇧</span><i class="cd"></i></button>
+    <button class="ab ab-bite" data-ab="bite" id="abBite"><span class="ab-icon">BITE</span><span class="ab-key">SPACE</span></button>
+  </section>
+
+  <div id="toasts" aria-live="polite"></div>
+  <div id="banner" hidden></div>
+  <div id="hint" hidden></div>
+  <div class="corner-btns">
+    <button id="muteBtn" class="icon-btn" aria-label="Toggle sound"></button>
+    <button id="inviteBtn" class="room-chip" aria-label="Copy invite link to this room" title="Invite friends to this room"><span>ROOM</span><b id="roomId">—</b></button>
+    <button id="shareBtn" class="icon-btn" aria-label="Share your stats" title="Share">
+      <svg viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5M5 13v6h14v-6"/></svg>
+    </button>
+  </div>
+  <div id="conn" hidden>Reconnecting to the swarm…</div>
+  <div id="dozed" class="overlay" hidden><div class="card overlay-card"><h2>You dozed off.</h2><p>Idle cockroaches get swept out after 10 minutes so someone else can chew.</p><button id="wakeBtn" class="big-btn">Wake up</button></div></div>
+</div>
+
+<svg width="0" height="0" class="sprites" aria-hidden="true">
+  <symbol id="roach" viewBox="0 0 64 40">
+    <g stroke="#1b1611" stroke-width="2.4" fill="none" stroke-linecap="round">
+      <path d="M22 12 14 4M22 28 14 36M30 11l-2-8M30 29l-2 8M38 12l6-7M38 28l6 7"/>
+      <path d="M48 17q8-6 14-14M48 23q8 6 14 14" stroke-width="1.8"/>
+    </g>
+    <ellipse cx="30" cy="20" rx="17" ry="11" fill="#9a5a2c" stroke="#1b1611" stroke-width="2.6"/>
+    <path d="M14 20h26" stroke="#4a2512" stroke-width="1.6"/>
+    <rect x="38" y="10" width="5" height="20" rx="2" fill="#ffd23f" stroke="#1b1611" stroke-width="2"/>
+    <ellipse cx="47" cy="20" rx="7" ry="7" fill="#4a2512" stroke="#1b1611" stroke-width="2.4"/>
+    <circle cx="49" cy="16" r="4" fill="#fff" stroke="#1b1611" stroke-width="1.6"/><circle cx="50.5" cy="16.5" r="1.8" fill="#1b1611"/>
+    <circle cx="49" cy="24" r="4" fill="#fff" stroke="#1b1611" stroke-width="1.6"/><circle cx="50.5" cy="23.2" r="1.8" fill="#1b1611"/>
+  </symbol>
+</svg>
+
+<script src="/shared/rules.js?v=__V__"></script>
+<script src="/shared/protocol.js?v=__V__"></script>
+<script src="/shared/content.js?v=__V__"></script>
+<script type="module" src="/js/main.js?v=__V__"></script>
+</body>
+</html>

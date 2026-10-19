@@ -1,0 +1,19 @@
+{
+  "name": "uprising",
+  "version": "1.0.0",
+  "description": "A satirical multiplayer browser game. They called us cockroaches.",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server/index.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch server/index.js",
+    "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.js\""
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "ws": "^8.22.0"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "private": true
+}
