@@ -29,6 +29,8 @@ class Hazards {
   }
 
   players() { return [...this.room.sessions.values()].filter(s => !s.sleeping); }
+  /** Newcomers get 10 s of grace: no chappal aims at them or flattens them. */
+  fair(now) { return this.players().filter(s => now - (s.joinedAt || 0) > 10000); }
 
   tick(now) {
     const lotus = this.room.lotus, players = this.players();
@@ -44,7 +46,7 @@ class Hazards {
   // ---------------------------------------------------------------- The Chappal
   tickChappal(now, players) {
     if (now >= this.nextChappal) {
-      const near = players.filter(s => Math.hypot(s.x - R.LOTUS.x, s.y - R.LOTUS.y) < 1100);
+      const near = this.fair(now).filter(s => Math.hypot(s.x - R.LOTUS.x, s.y - R.LOTUS.y) < 1100);
       const count = Math.min(4, 1 + Math.floor(near.length / 8));
       for (let k = 0; k < count && near.length; k++) {
         const t = pick(near);
@@ -61,7 +63,7 @@ class Hazards {
       const hit = [], dodged = [];
       for (const s of players) {
         const inside = Math.hypot(s.x - c.x, s.y - c.y) < c.r;
-        if (inside && s.flyUntil <= now) {
+        if (inside && s.flyUntil <= now && now - (s.joinedAt || 0) > 10000) {
           s.stunUntil = now + (R.has(this.room.levelOf(s), 'shell') ? 1100 : 2200);
           hit.push(s.id);
         } else if (c.warned.has(s.id)) {

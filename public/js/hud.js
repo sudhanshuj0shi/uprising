@@ -85,12 +85,30 @@ export const hud = {
     el.hidden = false; $('swarmMult').textContent = '×' + mult.toFixed(1);
   },
 
+  /**
+   * Toasts are QUEUED, not stacked: at most 1 on screen on phones (2 on desktop), the
+   * rest wait their turn. Important ones (coloured: level-ups, achievements, Jumla
+   * backfires) jump ahead; minor ones are dropped when the queue backs up, and an
+   * identical message already showing or waiting is never repeated.
+   */
   toast(html, cls = '', life = 3.2) {
-    const box = $('toasts');
-    const el = document.createElement('div'); el.className = 'toast ' + cls; el.innerHTML = html; el.style.setProperty('--life', life + 's');
-    box.prepend(el);
-    while (box.children.length > 4) box.lastChild.remove();
-    setTimeout(() => el.remove(), (life + 0.5) * 1000);
+    const prio = /\b(zap|pink|ach)\b/.test(cls) ? 2 : 1;
+    const q = this._tq || (this._tq = []);
+    if (q.some(t => t.html === html) || (this._tshown || []).includes(html)) return;
+    q.push({ html, cls, life, prio });
+    q.sort((a, b) => b.prio - a.prio);
+    while (q.length > 3) q.splice(q.findLastIndex(t => t.prio === Math.min(...q.map(x => x.prio))), 1);
+    this._pumpToasts();
+  },
+  _pumpToasts() {
+    const box = $('toasts'), max = matchMedia('(max-width: 720px)').matches ? 1 : 2;
+    this._tshown = this._tshown || [];
+    while (this._tq.length && box.children.length < max) {
+      const t = this._tq.shift();
+      const el = document.createElement('div'); el.className = 'toast ' + t.cls; el.innerHTML = t.html; el.style.setProperty('--life', t.life + 's');
+      box.append(el); this._tshown.push(t.html);
+      setTimeout(() => { el.remove(); this._tshown.splice(this._tshown.indexOf(t.html), 1); this._pumpToasts(); }, (t.life + 0.45) * 1000);
+    }
   },
   achievement(a) { this.toast(`<span class="medal">★</span><span>${esc(a.name)}<small>${esc(a.desc)}</small></span>`, 'ach', 4.5); },
 
@@ -115,16 +133,15 @@ export const hud = {
     el.hidden = false;
   },
 
+  /** "While you were away": only when you were gone a while AND something happened. */
   away(a) {
+    if (!a || a.ms < 10 * 60 * 1000) return;
     const items = [];
-    if (a.blooms > 0) items.push(`${fmt(a.blooms)} lotus${a.blooms > 1 ? 'es' : ''} toppled across India`);
+    if (a.blooms > 0) items.push(`${fmt(a.blooms)} lotus${a.blooms > 1 ? 'es' : ''} toppled`);
     if (a.petals > 0) items.push(`${fmt(a.petals)} petal${a.petals > 1 ? 's' : ''} chewed off`);
-    if (a.newPlayers > 0) items.push(`${fmt(a.newPlayers)} new cockroach${a.newPlayers > 1 ? 'es' : ''} joined`);
-    if (!items.length) items.push('The lotus grew. Quietly. Smugly.');
-    const el = document.createElement('div'); el.className = 'away card';
-    el.innerHTML = `<h4>While you were away · ${esc(awayStr(a.ms))}</h4><ul>${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
-    $('hud').appendChild(el);
-    setTimeout(() => el.remove(), 9000);
+    if (a.newPlayers > 0) items.push(`${fmt(a.newPlayers)} new cockroach${a.newPlayers > 1 ? 'es' : ''}`);
+    if (!items.length) return;
+    this.toast(`<b>While you were away (${esc(awayStr(a.ms))}):</b> ${items.join(' · ')}`, '', 5);
   },
 
   conn(down) { $('conn').hidden = !down; },

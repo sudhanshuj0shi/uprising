@@ -232,3 +232,4 @@ body.is-detained #me, body.is-detained #abilities, body.is-detained #swarm, body
 
 .pip.hit { animation: pipHit .25s ease-out; }
 @keyframes pipHit { 40% { transform: translateY(-3px) scale(1.18); background: #fff; } }
+@media (max-width: 720px) { #toasts { top: 182px; } }

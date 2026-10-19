@@ -139,11 +139,11 @@
   //              "dispersed" and does nothing. The swarm has to split up.
   const SHIELDS = {
     sealed:   { label: 'SEALED COVER', sub: 'Contents classified', hit: 'SEALED',
-      toast: '📁 SEALED COVER: some petals are now classified. Hearing adjourned.' },
+      toast: '📁 SEALED COVER on some petals. Hearing adjourned.' },
     shutdown: { label: 'INTERNET SHUTDOWN', sub: 'No signal', hit: 'BUFFERING…',
-      toast: '📵 INTERNET SHUTDOWN on some petals. Bites are buffering and rallies won\'t reach.' },
+      toast: '📵 INTERNET SHUTDOWN on some petals. No bites, no rallies.' },
     sec144:   { label: 'SECTION 144', sub: 'No gathering of 4+', hit: 'DISPERSE!',
-      toast: '🚧 SECTION 144 on some petals: no gathering of 4 or more. Small groups bite at full strength!' },
+      toast: '🚧 SECTION 144: groups of 3 or fewer only!' },
   };
   const SHIELD_KINDS = Object.keys(SHIELDS);
 

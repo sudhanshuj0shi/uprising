@@ -130,8 +130,8 @@ function onMessage(m) {
       hud.me(profile); hud.leaderboard(world.lb, profile.name);
       if (m.released) hud.toast(hud.esc(CONTENT.DETENTION.released), 'zap', 4);
       if (first) {
-        if (m.isNew) hud.toast(`Welcome to the swarm, <b>${hud.esc(profile.name)}</b>. You are cockroach #${hud.fmt(profile.number)}.`, 'zap', 4.5);
-        else hud.toast(`Welcome back, ${hud.esc(profile.name)}. The lotus missed you. (It did not.)`, '', 3.5);
+        if (m.isNew) hud.toast(`You are cockroach <b>#${hud.fmt(profile.number)}</b>. Go bite.`, 'zap', 3.5);
+        else hud.toast(`Welcome back, ${hud.esc(profile.name)}.`, '', 2.5);
         if (m.away) setTimeout(() => hud.away(m.away), 800);
         if (m.invite && !m.invite.got) setTimeout(() => hud.toast(`Room ${hud.esc(m.invite.id.toUpperCase())} was full, so you're in ${hud.esc(room.id.toUpperCase())}. Tap the room badge to invite friends here.`, '', 5), 1200);
       }
@@ -146,7 +146,7 @@ function onMessage(m) {
     case 'w': applyFull(m.w); break;
     case 'lb': world.lb = m.lb; hud.leaderboard(m.lb, profile && profile.name); break;
     case 'pj':
-      if (!roster.has(m.p.id) && joined && me && m.p.id !== me.id) hud.toast(`<b>${hud.esc(m.p.name)}</b> crawled in`, '', 2.2);
+      if (!roster.has(m.p.id) && joined && me && m.p.id !== me.id && roster.size < 6) hud.toast(`<b>${hud.esc(m.p.name)}</b> crawled in`, '', 2.2);
       roster.set(m.p.id, m.p);
       { const o = others.get(m.p.id); if (o) Object.assign(o, { name: m.p.name, hue: m.p.hue }); }
       break;
@@ -274,7 +274,7 @@ function onEvent(m) {
       fx.sparkle(R.LOTUS.x, R.LOTUS.y, 60); sfx.levelUp();
       hud.banner('NEW LOTUS, WHO DIS?', `Introducing <b>${hud.esc(m.name)}</b>. Bigger. Shinier. Same old petals.`, { life: 4.5 });
       break;
-    case 'regrow': nibbles.clear(m.part); hud.toast('🌸 Eternal Bloom: a fallen petal grew back. Chew faster.', '', 3); break;
+    case 'regrow': nibbles.clear(m.part); hud.toast('🌸 A fallen petal grew back.', '', 2.5); break;
     case 'rebrand':
       world.rebranded = true; fx.sparkle(R.LOTUS.x, R.LOTUS.y, 70); sfx.levelUp();
       hud.banner('THE GREAT REBRAND', `${hud.esc(m.name)} announces a glorious new beginning. Petals +20%. Same lotus.`, { gold: true, life: 4.5 });

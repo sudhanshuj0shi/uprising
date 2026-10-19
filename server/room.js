@@ -79,7 +79,7 @@ class Room {
     const ang = Math.random() * Math.PI * 2, d = 650 + Math.random() * 200;
     Object.assign(s, { x: R.LOTUS.x + Math.cos(ang) * d, y: R.LOTUS.y + Math.sin(ang) * d, a: ang + Math.PI,
       lastPosAt: now, lastInput: now, lastBite: 0, flyUntil: 0, flyCdUntil: 0, stunUntil: 0, knockUntil: 0, biteUntil: 0,
-      jumlaUntil: 0, posLockUntil: 0, voidBites: 0, lastRally: 0, sleeping: false, needsKey: true, needsLotus: true });
+      joinedAt: now, jumlaUntil: 0, posLockUntil: 0, voidBites: 0, lastRally: 0, sleeping: false, needsKey: true, needsLotus: true });
     this.sessions.set(s.id, s);
     this.dirty = true;
     this.broadcast({ t: 'pj', p: this.rosterEntry(s) });

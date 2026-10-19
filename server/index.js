@@ -289,8 +289,11 @@ function admit(s, now) {
   if (s.name && !isNew) p.name = s.name;
   tokenSessions.set(s.token, (tokenSessions.get(s.token) || 0) + 1);
 
-  // Returning players go back to their last room if it has space (unless they followed an invite).
-  const room = pickRoom(s.wantedRoom || p.lastRoom);
+  // Which room? An invite link wins. Otherwise a returning player goes back to their
+  // last room ONLY if people are still playing there (so they rejoin their swarm);
+  // an empty old room is not a reason to play alone, so they get normal matchmaking.
+  const last = p.lastRoom && rooms.get(p.lastRoom);
+  const room = pickRoom(s.wantedRoom || (last && last.size > 0 ? last.id : null));
   p.lastRoom = room.id;
   const info = room.add(s, now);
   playing++; national.online = playing;
@@ -352,7 +355,7 @@ setInterval(() => {
     const msg = JSON.stringify({ t: 'nat', national: nationalInfo() });
     for (const s of sessions.values()) if (s.mode !== 'new' && s.ws.readyState === 1) s.ws.send(msg);
   }
-  if (tickN % 600 === 0) {                                  // every 30 s: drop dead connections
+  if (tickN % 300 === 0) {                                  // every 15 s: drop dead connections (phones that vanished)
     for (const s of sessions.values()) { if (!s.alive) { s.ws.terminate(); continue; } s.alive = false; s.ws.ping(); }
   }
 }, TICK_MS);
