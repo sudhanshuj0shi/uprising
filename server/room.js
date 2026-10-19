@@ -23,7 +23,9 @@ const SLEEP_EVERY = 10;            // idle players: 1 update a second
 const LOTUS_EVERY = 2;             // lotus state at most 5 times a second, only when it changed
 const IDLE_MS = 3 * 60 * 1000;     // no input for 3 min → asleep (zzz, slow updates, no swarm bonus)
 const KICK_MS = 10 * 60 * 1000;    // no input for 10 min → disconnected to free the slot
-const NEWS_COOLDOWN_MS = 20000;    // at most one reactive headline every 20 s
+const NEWS_COOLDOWN_MS = 20000;
+// Testing aid only: multiplies every bite so a lotus can be toppled quickly on a dev machine. Leave unset in production.
+const DEV_DAMAGE_MULT = Math.max(1, +process.env.DEV_DAMAGE_MULT || 1);    // at most one reactive headline every 20 s
 const MAX_BUFFERED = 256 * 1024;   // skip a client whose connection is backed up (it gets a keyframe later)
 
 class Room {
@@ -170,7 +172,7 @@ class Room {
       blocked = crowd > R.SEC144_MAX;
       opts = { shieldMult: blocked ? 0 : 1 };
     }
-    const r = lotus.bite(part, R.BITE.dmg * mult, s.token, now, opts);
+    const r = lotus.bite(part, R.BITE.dmg * mult * DEV_DAMAGE_MULT, s.token, now, opts);
     if (!r) return;
     this.sendTo(s, { t: 'hit', part, dmg: Math.round(r.dealt * 10) / 10, buddies, shield: blocked, kind, killed: r.killed });
     this.prog.onBite(s.token, r.dealt, buddies);

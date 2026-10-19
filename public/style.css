@@ -126,7 +126,7 @@ kbd { font: 700 11px var(--font); background: var(--paper-2); border: 1.5px soli
 @keyframes throb { 50% { box-shadow: 0 0 0 6px rgba(255,79,139,.35), var(--shadow); } }
 @media (pointer: coarse) { .ab-key { display: none; } .ab { width: 62px; height: 62px; } .ab-bite { width: 92px; height: 92px; } }
 
-#toasts { position: absolute; top: 132px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; width: min(420px, 92vw); }
+#toasts { position: absolute; top: 176px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; width: min(420px, 92vw); }
 .toast { background: var(--paper); border: 2.5px solid var(--ink); border-radius: 10px; box-shadow: var(--shadow); padding: 7px 12px; font-size: 13.5px; font-weight: 700;
   animation: toastIn .25s ease-out, toastOut .4s ease-in forwards; animation-delay: 0s, var(--life, 3.2s); text-align: center; }
 .toast.zap { background: var(--zap); }

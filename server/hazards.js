@@ -34,7 +34,12 @@ class Hazards {
 
   tick(now) {
     const lotus = this.room.lotus, players = this.players();
-    if (!players.length || lotus.isFallen(now)) return;
+    // A chappal already in the air always lands, even if the lotus just fell or everyone
+    // left; otherwise clients would keep drawing a slipper frozen mid-stomp.
+    if (lotus.isFallen(now) || !players.length) {
+      if (this.chappals.length) this.tickChappal(now, players, false);
+      return;
+    }
     this.tickChappal(now, players);
     this.tickJumla(now, players);
     this.tickShield(now, lotus);
@@ -44,8 +49,8 @@ class Hazards {
   }
 
   // ---------------------------------------------------------------- The Chappal
-  tickChappal(now, players) {
-    if (now >= this.nextChappal) {
+  tickChappal(now, players, spawn = true) {
+    if (spawn && now >= this.nextChappal) {
       const near = this.fair(now).filter(s => Math.hypot(s.x - R.LOTUS.x, s.y - R.LOTUS.y) < 1100);
       const count = Math.min(4, 1 + Math.floor(near.length / 8));
       for (let k = 0; k < count && near.length; k++) {

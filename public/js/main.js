@@ -623,6 +623,8 @@ function frame(nowP) {
   fx.draw(ctx, 'water');
 
   const now = serverNow();
+  // Safety net: forget any chappal whose stomp never arrived (e.g. a dropped message).
+  for (const [id, c] of hz.chappals) if (now - c.at > 1500) hz.chappals.delete(id);
   for (const c of hz.chappals.values()) drawChappalWarning(ctx, c, now, t);
 
   // lotus

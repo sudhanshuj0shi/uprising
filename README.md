@@ -56,7 +56,8 @@ All settings are environment variables. The defaults suit a single small server.
 | `MAX_CONNECTIONS` | `MAX_PLAYERS×2+200`   | Hard cap on open sockets (players + spectators + detained) |
 | `MAX_CONN_PER_IP` | `8`                   | Open sockets allowed per IP address |
 | `TRUST_PROXY`     | off                   | Set to `1` behind a reverse proxy (Railway, Cloudflare) so per-IP limits see the real client IP |
-| `ALLOWED_ORIGINS` | same host             | Comma-separated list of origins allowed to open a game socket, e.g. `https://uprising.lol` |
+| `ALLOWED_ORIGINS` | same host             | Comma-separated list of origins allowed to open a game socket, e.g. `https://uprising.games` |
+| `DEV_DAMAGE_MULT` | `1`                   | **Testing only.** Multiplies bite damage so a lotus can be toppled in a minute on a dev machine. Never set in production. |
 
 ## Architecture
 
