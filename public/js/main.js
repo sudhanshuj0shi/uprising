@@ -11,6 +11,7 @@ import { Input } from './input.js';
 import { hud } from './hud.js';
 import { sfx } from './sfx.js';
 import { openShare } from './news.js';
+import { Nibbles } from './nibbles.js';
 import { C, LotusArt, Pond, Particles, drawRoach, drawChappal, drawChappalWarning, drawJumla, drawCutout, drawBubble,
   drawDetentionPod, drawPin, label, partPath, fmtDur } from './render.js';
 const R = window.RULES, P = window.PROTO, CONTENT = window.CONTENT;
@@ -23,6 +24,7 @@ const input = new Input(canvas);
 const lotusArt = new LotusArt();
 const pond = new Pond();
 const fx = new Particles();
+const nibbles = new Nibbles();            // a tooth mark for every bite (see nibbles.js)
 hud.init(input);
 
 let clockOffset = 0;                       // serverTime - Date.now()
@@ -65,6 +67,7 @@ function health() {
 function applyLotus(l) {
   world.growth = l.growth; world.frac = l.frac; world.roomOnline = l.roomOnline; world.nationOnline = l.nationOnline; world.totals.damage = l.damage;
   for (let i = 0; i < R.PARTS.length; i++) { world.alive[i] = !!(l.alive >> i & 1); world.shield[i] = !!(l.shield >> i & 1); }
+  nibbles.sync(world.frac, world.alive);
 }
 function applyFull(w) {
   if (!w) return;
@@ -163,7 +166,7 @@ function checkVersion(v) { if (VERSION && v && v !== VERSION && VERSION !== '__V
 
 /** Shared by spectating and playing: load a room's world, hazards and roster. */
 function enterRoom(m) {
-  if (m.room && m.room.id !== room.id) { others.clear(); }
+  if (m.room && m.room.id !== room.id) { others.clear(); nibbles.clearAll(); }
   room = m.room || room;
   hud.room(room.id);
   if (joined && room.id && location.pathname !== `/r/${room.id}`) history.replaceState(null, '', `/r/${room.id}`);
@@ -218,8 +221,14 @@ function onHit(m) {
     fx.text(mx, my - 18, m.left ? `OLD NOTE · ${m.left} left` : 'LAST OLD NOTE', '#c8e6a0', 13);
     me.voidLeft = m.left; return;
   }
-  if (m.shield) { fx.text(mx, my - 18, 'SHIELDED', C.sky, 13); sfx.shielded(); }
-  else fx.text(mx + (Math.random() - 0.5) * 20, my - 16, `-${Math.round(m.dmg)}`, m.buddies ? C.zap : '#fff', m.buddies ? 18 : 15);
+  if (m.shield) {
+    fx.text(mx, my - 18, 'BLOCKED', C.sky, 13); sfx.shielded();
+    for (let k = 0; k < 6; k++) fx.add({ type: 'spark', x: mx, y: my, vx: (Math.random() - 0.5) * 260, vy: (Math.random() - 0.5) * 260, life: 0.35, age: 0, r: 3 });
+  } else {
+    nibbles.add(m.part, mx, my, me.a, world.growth, performance.now());
+    hud.pulsePip(m.part);
+    fx.text(mx + (Math.random() - 0.5) * 20, my - 16, `-${Math.round(m.dmg)}`, m.buddies ? C.zap : '#fff', m.buddies ? 18 : 15);
+  }
   me.swarm = R.swarmMult(m.buddies); me.swarmAt = performance.now();
   profile.bites++;
   if (m.killed) cam.shake = Math.max(cam.shake, 12);
@@ -259,10 +268,11 @@ function onEvent(m) {
       break;
     }
     case 'newGen':
+      nibbles.clearAll();
       fx.sparkle(R.LOTUS.x, R.LOTUS.y, 60); sfx.levelUp();
       hud.banner('NEW LOTUS, WHO DIS?', `Introducing <b>${hud.esc(m.name)}</b>. Bigger. Shinier. Same old petals.`, { life: 4.5 });
       break;
-    case 'regrow': hud.toast('🌸 Eternal Bloom: a fallen petal grew back. Chew faster.', '', 3); break;
+    case 'regrow': nibbles.clear(m.part); hud.toast('🌸 Eternal Bloom: a fallen petal grew back. Chew faster.', '', 3); break;
     case 'rebrand':
       world.rebranded = true; fx.sparkle(R.LOTUS.x, R.LOTUS.y, 70); sfx.levelUp();
       hud.banner('THE GREAT REBRAND', `${hud.esc(m.name)} announces a glorious new beginning. Petals +20%. Same lotus.`, { gold: true, life: 4.5 });
@@ -331,19 +341,20 @@ function onJumlaHit(m) {
   const mine = me && joined && m.id === me.id;
   if (!mine) {
     const o = others.get(m.id);
-    if (o && inView(o.x, o.y)) fx.text(o.x, o.y - 34, '*Terms & conditions apply', '#fff', 13);
+    if (o && inView(o.x, o.y)) { fx.text(o.x, o.y - 34, '*Terms & conditions apply', '#fff', 13); sfx.jumla(0.35); }
     return;
   }
+  sfx.jumla(1);
   hud.toast(hud.esc(def.caught), '', 4.2);
   cam.shake = Math.max(cam.shake, 8);
   switch (def.effect) {
     case 'launch': case 'float':
-      me.kx = m.vx; me.ky = m.vy; sfx.boing();
+      me.kx = m.vx; me.ky = m.vy;
       if (def.effect === 'float') me.stunUntil = nowP + m.ms;
       break;
-    case 'freeze': me.stunUntil = nowP + m.ms; sfx.warn(); break;
-    case 'void': me.voidLeft = def.bites; sfx.shielded(); break;
-    case 'uturn': me.uturnUntil = nowP + m.ms; sfx.boing(); break;
+    case 'freeze': me.stunUntil = nowP + m.ms; break;
+    case 'void': me.voidLeft = def.bites; break;
+    case 'uturn': me.uturnUntil = nowP + m.ms; break;
     case 'teleport': me.x = m.x; me.y = m.y; me.vx = me.vy = 0; cam.x = me.x; cam.y = me.y; fx.sparkle(me.x, me.y, 20); break;
   }
   fx.text(me.x, me.y - 44, '*Terms & conditions apply', C.zap, 16);
@@ -539,7 +550,12 @@ function updateOthers(dt) {
     o.walk += sp * dt * 0.09; o.size = R.sizeFor(o.lvl || 1); o.crown = R.has(o.lvl || 1, 'crown');
     if (o.biteT > 0) {
       const was = o.biteT; o.biteT += dt * 4;
-      if (was < 0.05 && o.biteT >= 0.05 && inView(o.x, o.y)) fx.crumbs(o.x + Math.cos(o.a) * 20 * o.size, o.y + Math.sin(o.a) * 20 * o.size, 4, ['#ff4f8b', '#ffc2d6', '#fff']);
+      if (was < 0.05 && o.biteT >= 0.05) {
+        const mx = o.x + Math.cos(o.a) * 18 * o.size, my = o.y + Math.sin(o.a) * 18 * o.size;
+        const part = R.biteTarget(mx, my, world.growth, i => world.alive[i], o.flying, coreOpen(), R.BITE.reach * o.size + 8);
+        if (part >= 0 && !world.shield[part]) nibbles.add(part, mx, my, o.a, world.growth, performance.now());
+        if (inView(o.x, o.y)) fx.crumbs(mx, my, 4, ['#ff4f8b', '#ffc2d6', '#fff']);
+      }
       if (o.biteT > 1) o.biteT = 0;
     }
     if (sp > 30 && Math.random() < dt * 3 && inView(o.x, o.y)) fx.ripple(o.x, o.y);
@@ -593,7 +609,11 @@ function frame(nowP) {
   const fallen = world.fallenUntil > now;
   lotusArt.update(fracs, fallen ? world.alive.map(() => false) : world.alive, world.rebranded ? 'gold' : 'normal');
   if (fallen) drawRoots(t, world.fallenUntil - now);
-  else lotusArt.draw(ctx, world.growth, t);
+  else {
+    lotusArt.draw(ctx, world.growth, t);
+    nibbles.draw(ctx, partPath, world.growth, nowP, world.rebranded);
+    nibbles.drawFlash(ctx, partPath, world.growth, nowP);
+  }
   drawLotusOverlays(now);
 
   hz.cutouts = hz.cutouts.filter(c => c.until > now);
@@ -765,4 +785,4 @@ function hudTick(now) {
 requestAnimationFrame(frame);
 
 // Debug handle for tests / curious players in the console.
-window.__uprising = { get me() { return me; }, world, cam, others, net, get room() { return room; }, get detained() { return detained; }, get profile() { return profile; } };
+window.__uprising = { get me() { return me; }, world, cam, others, net, nibbles, get room() { return room; }, get detained() { return detained; }, get profile() { return profile; } };

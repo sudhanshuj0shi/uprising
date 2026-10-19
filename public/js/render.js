@@ -30,7 +30,7 @@ function outlinePoint(L, W, t, side) { // t: 0 base -> 1 tip
 }
 
 const LC = 1.6; // lotus cache resolution multiplier (keeps it crisp when it grows)
-const MARKS = 34;
+const MARKS = 48;   // damage steps per petal drawing (finer = changes sooner)
 
 // Precomputed bite marks per part, ordered so damage eats tip-first, then inward.
 const biteMarks = R.PARTS.map((p, i) => {

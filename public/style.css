@@ -229,3 +229,6 @@ kbd { font: 700 11px var(--font); background: var(--paper-2); border: 1.5px soli
 @media (max-width: 720px) { #board:not(.open) .nation { display: none; } }
 /* While detained there is no cockroach to steer yet: hide the player card and controls. */
 body.is-detained #me, body.is-detained #abilities, body.is-detained #swarm, body.is-detained #hint { display: none; }
+
+.pip.hit { animation: pipHit .25s ease-out; }
+@keyframes pipHit { 40% { transform: translateY(-3px) scale(1.18); background: #fff; } }

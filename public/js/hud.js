@@ -43,6 +43,8 @@ export const hud = {
   stats(roomOnline, roomMax, nationOnline) {
     $('online').textContent = fmt(roomOnline); $('roomMax').textContent = roomMax; $('nationOnline').textContent = fmt(Math.max(nationOnline, roomOnline));
   },
+  /** Brief pulse on a petal's HUD pip when you land a bite on it. */
+  pulsePip(i) { const el = this.pips && this.pips[i]; if (!el) return; el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); },
   room(id) { $('roomId').textContent = String(id).toUpperCase(); },
   /** National scoreboard line under the room leaderboard. */
   national(n) {

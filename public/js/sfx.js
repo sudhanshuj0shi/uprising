@@ -29,8 +29,45 @@ function crunch(vol, freq, dur, delay = 0) {
   env(a, g, t, 0.003, vol, dur); n.connect(f).connect(g).connect(master); n.start(t, Math.random() * 0.3); n.stop(t + dur + 0.05);
 }
 
+// Optional custom Jumla sound: drop a short clip at public/sfx/jumla.mp3 and it replaces
+// the built-in sad trombone. Loaded once, after the player's first tap (browsers
+// only allow audio after a user gesture). If the file is missing, nothing breaks.
+let jumlaClip = null, jumlaTried = false;
+async function loadJumlaClip() {
+  if (jumlaTried) return; jumlaTried = true;
+  try {
+    const res = await fetch('/sfx/jumla.mp3');
+    if (!res.ok) return;
+    const a = ctx(); if (!a) return;
+    jumlaClip = await a.decodeAudioData(await res.arrayBuffer());
+  } catch { jumlaClip = null; }
+}
+
 export const sfx = {
-  unlock() { ctx(); },
+  unlock() { ctx(); loadJumlaClip(); },
+  /** A Jumla backfired. volume: 1 for you, quieter for someone nearby. */
+  jumla(volume = 1) {
+    const a = ctx(); if (!a || muted) return;
+    if (jumlaClip) {
+      const src = a.createBufferSource(), g = a.createGain();
+      src.buffer = jumlaClip; g.gain.value = volume;
+      src.connect(g).connect(master); src.start();
+      return;
+    }
+    // Built-in: a sad trombone, "wah wah wah waaaah".
+    const notes = [[311, 0.0, 0.28], [294, 0.3, 0.28], [277, 0.6, 0.28], [262, 0.9, 0.9]];
+    for (const [f, at, dur] of notes) {
+      const t = a.currentTime + at, o = a.createOscillator(), g = a.createGain(), lp = a.createBiquadFilter();
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t);
+      if (dur > 0.5) {                                   // wobble on the last, long note
+        const lfo = a.createOscillator(), lg = a.createGain();
+        lfo.frequency.value = 6; lg.gain.value = 9; lfo.connect(lg).connect(o.frequency); lfo.start(t); lfo.stop(t + dur);
+      }
+      lp.type = 'lowpass'; lp.frequency.value = 1100;
+      env(a, g, t, 0.03, 0.16 * volume, dur);
+      o.connect(lp).connect(g).connect(master); o.start(t); o.stop(t + dur + 0.05);
+    }
+  },
   get muted() { return muted; },
   toggle() { muted = !muted; try { localStorage.setItem('uprising.muted', muted ? '1' : '0'); } catch {} return muted; },
   bite(power = 1) { const p = 0.85 + Math.random() * 0.3; crunch(0.5, 1800 * p, 0.07); crunch(0.35, 3200 * p, 0.04, 0.03); tone('square', 180 * p, 70, 0.06, 0.12 * power); },
