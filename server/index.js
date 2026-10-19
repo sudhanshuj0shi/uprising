@@ -368,7 +368,11 @@ function persist() {
   } catch (e) { console.error('save failed', e); }
 }
 
+// Railway (and most hosts) stop the old copy with SIGTERM when a new version goes live.
+// Save everything and exit with code 0 so the host records a clean stop, not a crash.
+let stopping = false;
 function shutdown() {
+  if (stopping) return; stopping = true;
   console.log('shutting down, saving…');
   for (const s of sessions.values()) if (s.mode === 'play') { const p = prog.get(s.token); if (p) { p.lastSeen = Date.now(); p.seen = { blooms: national.blooms, petals: national.petals, total: national.total }; prog.touch(s.token); } }
   persist(); store.close(); process.exit(0);
